@@ -568,7 +568,7 @@ function render(){
   document.getElementById('sp-verse-ref').textContent=VERSES[_vi].r;
   document.getElementById('candle-verse-text').textContent=VERSES[_vi].t;
   document.getElementById('candle-verse-ref').textContent=VERSES[_vi].r;
-  updateStreak();updateReadingPlan();updateDevos();updatePrayers();updateGratitude();updateFavs();updateAudioTracks();save();
+  updateStreak();updateReadingPlan();updateDevos();updatePrayers();updateGratitude();updateFavs();save();
 }
 function updateStreak(){
   var h='';for(var i=0;i<7;i++){var lit=Math.random()<0.6;h+='<div class="sp-streak-day"><div class="sp-sd-circle '+(lit?'lit':'')+'">'+(i+1)+'</div><div class="sp-sd-lbl">Day</div></div>';}
@@ -602,14 +602,6 @@ function updateFavs(){
   var h='';for(var i=0;i<_favs.length;i++){var v=_favs[i];h+='<div class="sp-verse-card"><div class="sp-verse-ico">⭐</div><div class="sp-verse-label">Favourite Verse</div><div class="sp-verse-text">'+v.t+'</div><div class="sp-verse-ref">'+v.r+'</div></div>';}
   var addBtn='<button class="sp-add-prayer-btn" onclick="openAddFavVerseModal()" style="margin:0 14px 10px;">+ Add Verse</button>';
   document.getElementById('sp-favs-list').innerHTML=addBtn+(h||'<div style="padding:20px;text-align:center;color:rgba(200,190,255,0.32);font-size:13px;">No favourite verses yet</div>');
-}
-function updateAudioTracks(){
-  var h='';for(var i=0;i<TRACKS.length;i++){
-    var trackTitle=TRACKS[i].title;
-    var displayTitle=trackTitle.indexOf('—')>-1?trackTitle.split('—')[1].replace(/<[^>]*>/g,'').trim():trackTitle;
-    h+='<button class="sp-audio-track '+(i===_curAudio?'active':'')+'" onclick="audioLoad('+i+')">'+displayTitle+'</button>';
-  }
-  document.getElementById('sp-audio-tracks').innerHTML=h;
 }
 
 /* ═══ INTERACTIONS ═══ */
@@ -726,23 +718,32 @@ function openExportSheet(){document.getElementById('export-sheet').classList.add
 function closeExportSheet(e){if(!e||e.target===document.getElementById('export-sheet'))document.getElementById('export-sheet').classList.remove('open');}
 
 /* ═══ AUDIO PLAYER ═══ */
-var TRACKS=[
-  {src:'Jeremiah_31_3_Lamentations_3_22_-_23__1_.mp3', title:'Today\'s Reading — <span>Jeremiah 31:3 · Lamentations 3:22-23</span>'}
-  // Add more tracks here when you have the MP3 files:
-  // {src:'Josh_1_8_1John_3_1_Rom8_1.mp3', title:'Today\'s Reading — <span>Josh 1:8 · 1 John 3:1 · Rom 8:1</span>'},
-  // {src:'Isaiah_41_10.mp3',               title:'Today\'s Reading — <span>Isaiah 41:10</span>'},
-  // {src:'Psalm_91.mp3',                    title:'Today\'s Reading — <span>Psalm 91</span>'},
-  // {src:'Psalm_124.mp3',                   title:'Today\'s Reading — <span>Psalm 124</span>'},
-];
-var aud,btn,icon,seek,curEl,durEl,titleEl;
-function initAudio(){
-  aud=document.getElementById('sp-audio');
-  btn=document.getElementById('audio-play-btn');
-  icon=btn.querySelector('svg');
-  seek=document.getElementById('audio-seek');
-  curEl=document.getElementById('audio-cur');
-  durEl=document.getElementById('audio-dur');
-  titleEl=document.getElementById('audio-now-title');
+(function(){
+  var TRACKS=[
+    {src:'Jeremiah_31_3_Lamentations_3_22_-_23__1_.mp3', title:'Today\'s Reading — <span>Jeremiah 31:3 · Lamentations 3:22-23</span>'}
+  ];
+  var _cur=0;
+  var aud=document.getElementById('sp-audio');
+  var btn=document.getElementById('audio-play-btn');
+  var icon=btn.querySelector('svg');
+  var seek=document.getElementById('audio-seek');
+  var curEl=document.getElementById('audio-cur');
+  var durEl=document.getElementById('audio-dur');
+  var titleEl=document.getElementById('audio-now-title');
+  function fmt(s){var m=Math.floor(s/60);var ss=Math.floor(s%60);return m+':'+(ss<10?'0':'')+ss;}
+  function setPlaying(p){
+    icon.innerHTML=p
+      ?'<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>'
+      :'<polygon points="5,3 19,12 5,21"/>';
+    p?btn.classList.add('playing'):btn.classList.remove('playing');
+  }
+  function setActiveTrack(i){
+    document.querySelectorAll('.sp-audio-track').forEach(function(el,idx){
+      el.classList.toggle('active',idx===i);
+    });
+    titleEl.innerHTML=TRACKS[i].title;
+    seek.value=0; curEl.textContent='0:00'; durEl.textContent='--:--';
+  }
   aud.addEventListener('loadedmetadata',function(){durEl.textContent=fmt(aud.duration);});
   aud.addEventListener('timeupdate',function(){
     if(!aud.duration)return;
@@ -751,69 +752,37 @@ function initAudio(){
   });
   aud.addEventListener('ended',function(){
     setPlaying(false);
-    var next=(_curAudio+1)%TRACKS.length;
-    audioLoad(next);
+    var next=(_cur+1)%TRACKS.length;
+    window.audioLoad(next);
   });
-  aud.addEventListener('error',function(){
-    showToast('Error loading audio 🔇');
-  });
-  aud.addEventListener('canplay',function(){
-    showToast('Audio ready ▶️');
-  });
-}
-function fmt(s){var m=Math.floor(s/60);var ss=Math.floor(s%60);return m+':'+(ss<10?'0':'')+ss;}
-function setPlaying(p){
-  icon.innerHTML=p
-    ?'<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>'
-    :'<polygon points="5,3 19,12 5,21"/>';
-  p?btn.classList.add('playing'):btn.classList.remove('playing');
-}
-function setActiveTrack(i){
-  document.querySelectorAll('.sp-audio-track').forEach(function(el,idx){
-    el.classList.toggle('active',idx===i);
-  });
-  titleEl.innerHTML=TRACKS[i].title;
-  seek.value=0; curEl.textContent='0:00'; durEl.textContent='--:--';
-}
-function audioToggle(){
-  if(aud.paused){
-    if(!aud.src){
-      showToast('Select a track first');
-      return;
-    }
-    aud.play().then(function(){
-      setPlaying(true);
-      showToast('Playing... 🎵');
-    }).catch(function(err){
-      console.error('Playback error:',err);
-      showToast('Cannot play - file not found or browser blocked audio');
-    });
-  }else{
-    aud.pause();
+  aud.addEventListener('error',function(){showToast('Error: Audio file not found');});
+  window.audioToggle=function(){
+    if(aud.paused){aud.play().catch(function(e){showToast('Cannot play audio');});setPlaying(true);}
+    else{aud.pause();setPlaying(false);}
+  };
+  window.audioSeek=function(v){
+    if(aud.duration)aud.currentTime=(v/100)*aud.duration;
+  };
+  window.audioLoad=function(i){
+    var wasPlaying=!aud.paused;
+    _cur=i;
+    aud.src=TRACKS[i].src;
+    aud.load();
+    setActiveTrack(i);
     setPlaying(false);
+    if(wasPlaying){aud.play().catch(function(e){showToast('Cannot play audio');});setPlaying(true);}
+  };
+  // Render track buttons
+  var trackHtml='';
+  for(var i=0;i<TRACKS.length;i++){
+    var displayTitle=TRACKS[i].title.indexOf('—')>-1?TRACKS[i].title.split('—')[1].replace(/<[^>]*>/g,'').trim():TRACKS[i].title;
+    trackHtml+='<button class="sp-audio-track '+(i===_cur?'active':'')+'" onclick="window.audioLoad('+i+')">'+displayTitle+'</button>';
   }
-}
-function audioSeek(v){
-  if(aud.duration)aud.currentTime=(v/100)*aud.duration;
-}
-function audioLoad(i){
-  var wasPlaying=!aud.paused;
-  _curAudio=i;
-  aud.src=TRACKS[i].src;
-  aud.load();
-  setActiveTrack(i);
-  setPlaying(false);
-  showToast('Loading: '+TRACKS[i].src+'...');
-  if(wasPlaying){
-    setTimeout(function(){
-      aud.play().catch(function(err){
-        console.error('Audio play error:',err);
-        showToast('Audio file not found or cannot play');
-      });
-      setPlaying(true);
-    },300);
-  }
-}
+  var tracksEl=document.getElementById('sp-audio-tracks');
+  if(tracksEl){tracksEl.innerHTML=trackHtml;}
+  // Set initial track
+  setActiveTrack(0);
+})();
 
 /* ═══ TOAST ═══ */
 var _tt=null;
@@ -829,11 +798,7 @@ function showToast(msg){
 function dismissToast(){document.getElementById('toast').classList.remove('show');clearTimeout(_tt);}
 
 /* ═══ INIT ═══ */
-load();
-setTimeout(function(){
-  render();
-  initAudio();
-},100);
+load();render();
 </script>
 </body>
 </html>
